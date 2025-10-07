@@ -282,7 +282,7 @@ Check the console output for detailed error messages. The application provides c
 
 ## License
 
-This project is open source and available under the MIT License.
+This project is under my workspace
 
 ## Support
 
