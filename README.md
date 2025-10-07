@@ -367,4 +367,4 @@ Set `USE_ONLY_RF=true` to ensure the app:
 - Avoids transformer imports
 - Reduces container size & build time
 
-You can still later re-enable BERT by clearing that variable and switching requirements.
+You can still later re-enable BERT by clearing that variable and switching requirements."# misinformation" 
