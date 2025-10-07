@@ -1,0 +1,14 @@
+{
+  "active_model": {
+    "id": "logistic",
+    "name": "Logistic Regression",
+    "type": "ml",
+    "model_file": "logistic.pkl",
+    "vectorizer_file": "logistic_tfidf.pkl",
+    "size_kb": 39.92,
+    "modified": "2025-10-06 23:19:55",
+    "available": true
+  },
+  "last_updated": "2025-10-06T23:25:53.392115",
+  "updated_by": "user"
+}

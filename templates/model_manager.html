@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Management - Misinformation Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+        .model-card {
+            transition: all 0.3s ease;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+        }
+        .model-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        .model-card.active {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+        }
+        .model-type-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+        }
+        .metric-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 4px 0;
+        }
+        .active-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #28a745;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-11">
+                <div class="main-container p-4">
+                    <!-- Header -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h1 class="display-5 fw-bold mb-2">
+                                <i class="fas fa-cogs"></i> Model Management
+                            </h1>
+                            <p class="text-muted">Switch between trained models dynamically</p>
+                        </div>
+                        <div>
+                            <a href="/" class="btn btn-outline-primary">
+                                <i class="fas fa-arrow-left"></i> Back to Detector
+                            </a>
+                            <button class="btn btn-primary" onclick="refreshModels()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Active Model Info -->
+                    <div class="alert alert-info mb-4" id="activeModelInfo">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-check-circle fa-2x me-3"></i>
+                            <div>
+                                <h5 class="mb-1">Current Active Model</h5>
+                                <p class="mb-0" id="activeModelName">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Models Grid -->
+                    <h4 class="mb-3"><i class="fas fa-layer-group"></i> Available Models</h4>
+                    <div class="row" id="modelsContainer">
+                        <div class="col-12 text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-3 text-muted">Loading models...</p>
+                        </div>
+                    </div>
+
+                    <!-- Model Details Modal -->
+                    <div class="modal fade" id="modelDetailsModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="modalModelName"></h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body" id="modalModelDetails">
+                                    Loading...
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-primary" id="activateBtn" onclick="activateModelFromModal()">
+                                        <i class="fas fa-check"></i> Activate This Model
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentModels = [];
+        let activeModel = null;
+        let selectedModelId = null;
+
+        const modelDetailsModal = new bootstrap.Modal(document.getElementById('modelDetailsModal'));
+
+        async function refreshModels() {
+            try {
+                const response = await fetch('/api/models/available');
+                const data = await response.json();
+                
+                currentModels = data.models || [];
+                activeModel = data.active_model;
+                
+                displayActiveModel();
+                displayModels();
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                document.getElementById('modelsContainer').innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Failed to load models: ${error.message}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function displayActiveModel() {
+            const infoDiv = document.getElementById('activeModelInfo');
+            const nameDiv = document.getElementById('activeModelName');
+            
+            if (activeModel) {
+                nameDiv.innerHTML = `
+                    <strong>${activeModel.name}</strong> 
+                    <span class="badge bg-secondary">${activeModel.type}</span>
+                    ${activeModel.accuracy ? `<span class="ms-2">Accuracy: ${(activeModel.accuracy * 100).toFixed(2)}%</span>` : ''}
+                `;
+                infoDiv.className = 'alert alert-success mb-4';
+            } else {
+                nameDiv.innerHTML = '<span class="text-warning">No active model set</span>';
+                infoDiv.className = 'alert alert-warning mb-4';
+            }
+        }
+
+        function displayModels() {
+            const container = document.getElementById('modelsContainer');
+            
+            if (currentModels.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle"></i>
+                            No trained models found. Please train models first.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            currentModels.forEach((model, index) => {
+                const isActive = activeModel && activeModel.id === model.id;
+                const typeColor = model.type === 'neural_network' ? 'primary' : (model.type === 'ml' ? 'success' : 'info');
+                
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card model-card h-100 ${isActive ? 'active' : ''}" onclick="selectModel('${model.id}')">
+                            ${isActive ? '<div class="active-indicator"><i class="fas fa-check"></i> ACTIVE</div>' : ''}
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">
+                                    ${model.name}
+                                    <span class="badge bg-${typeColor} model-type-badge">${model.type.replace('_', ' ')}</span>
+                                </h5>
+                                
+                                ${model.accuracy !== undefined ? `
+                                <div class="metric-box">
+                                    <small class="text-muted">Performance Metrics:</small>
+                                    <div class="row mt-2">
+                                        <div class="col-6">
+                                            <small><strong>Accuracy:</strong> ${(model.accuracy * 100).toFixed(2)}%</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <small><strong>F1:</strong> ${(model.f1 * 100).toFixed(2)}%</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-hdd"></i> ${model.size_kb} KB<br>
+                                        <i class="fas fa-clock"></i> ${model.modified}
+                                    </small>
+                                </div>
+                                
+                                <div class="d-grid gap-2 mt-3">
+                                    ${!isActive ? `
+                                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); activateModel('${model.id}')">
+                                            <i class="fas fa-power-off"></i> Activate
+                                        </button>
+                                    ` : `
+                                        <button class="btn btn-sm btn-success" disabled>
+                                            <i class="fas fa-check"></i> Currently Active
+                                        </button>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function selectModel(modelId) {
+            selectedModelId = modelId;
+            const model = currentModels.find(m => m.id === modelId);
+            
+            if (!model) return;
+            
+            document.getElementById('modalModelName').textContent = model.name;
+            
+            let detailsHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Basic Info</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <strong>Type:</strong> ${model.type.replace('_', ' ')}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Model File:</strong> ${model.model_file}
+                            </li>
+                            ${model.vectorizer_file ? `
+                            <li class="list-group-item">
+                                <strong>Vectorizer:</strong> ${model.vectorizer_file}
+                            </li>
+                            ` : ''}
+                            <li class="list-group-item">
+                                <strong>Size:</strong> ${model.size_kb} KB
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Modified:</strong> ${model.modified}
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Performance Metrics</h6>
+                        ${model.accuracy !== undefined ? `
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <strong>Accuracy:</strong> ${(model.accuracy * 100).toFixed(2)}%
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Precision:</strong> ${(model.precision * 100).toFixed(2)}%
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Recall:</strong> ${(model.recall * 100).toFixed(2)}%
+                            </li>
+                            <li class="list-group-item">
+                                <strong>F1 Score:</strong> ${(model.f1 * 100).toFixed(2)}%
+                            </li>
+                        </ul>
+                        ` : '<p class="text-muted">No metrics available</p>'}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modalModelDetails').innerHTML = detailsHtml;
+            
+            const activateBtn = document.getElementById('activateBtn');
+            const isActive = activeModel && activeModel.id === modelId;
+            if (isActive) {
+                activateBtn.disabled = true;
+                activateBtn.innerHTML = '<i class="fas fa-check"></i> Currently Active';
+            } else {
+                activateBtn.disabled = false;
+                activateBtn.innerHTML = '<i class="fas fa-power-off"></i> Activate This Model';
+            }
+            
+            modelDetailsModal.show();
+        }
+
+        async function activateModel(modelId) {
+            try {
+                const response = await fetch('/api/models/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model_id: modelId })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`✓ Successfully activated: ${data.model.name}\n\nThe new model is now ready for predictions!`);
+                    refreshModels();
+                } else {
+                    alert(`✗ Failed to activate model: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`✗ Error activating model: ${error.message}`);
+            }
+        }
+
+        function activateModelFromModal() {
+            if (selectedModelId) {
+                modelDetailsModal.hide();
+                activateModel(selectedModelId);
+            }
+        }
+
+        // Load models on page load
+        document.addEventListener('DOMContentLoaded', refreshModels);
+    </script>
+</body>
+</html>

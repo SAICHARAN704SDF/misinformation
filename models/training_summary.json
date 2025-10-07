@@ -1,0 +1,51 @@
+{
+  "best_model": "Ensemble (Voting)",
+  "all_models": [
+    {
+      "name": "Ensemble (Voting)",
+      "accuracy": 0.9409340659340659,
+      "f1": 0.8326848249027237,
+      "precision": 0.7886977886977887,
+      "recall": 0.8818681318681318
+    },
+    {
+      "name": "Gradient Boosting",
+      "accuracy": 0.9514652014652014,
+      "f1": 0.8295819935691318,
+      "precision": 1.0,
+      "recall": 0.7087912087912088
+    },
+    {
+      "name": "XGBoost",
+      "accuracy": 0.9336080586080586,
+      "f1": 0.8094612352168199,
+      "precision": 0.7758186397984886,
+      "recall": 0.8461538461538461
+    },
+    {
+      "name": "Logistic Regression",
+      "accuracy": 0.9152930402930403,
+      "f1": 0.7923681257014591,
+      "precision": 0.6698292220113852,
+      "recall": 0.9697802197802198
+    },
+    {
+      "name": "Linear SVM",
+      "accuracy": 0.9116300366300366,
+      "f1": 0.7848383500557413,
+      "precision": 0.6604127579737336,
+      "recall": 0.967032967032967
+    },
+    {
+      "name": "Random Forest",
+      "accuracy": 0.9120879120879121,
+      "f1": 0.736986301369863,
+      "precision": 0.7349726775956285,
+      "recall": 0.739010989010989
+    }
+  ],
+  "training_samples": 2184,
+  "seed": 42,
+  "trained_at": "2025-10-06T23:19:57.928175",
+  "reproducibility": "All models trained with fixed seed for reproducibility"
+}

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔎 Misinformation Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+        .title-section {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .prediction-card {
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .prediction-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .misleading {
+            background: linear-gradient(45deg, #ff416c, #ff4b2b);
+            color: white;
+        }
+        .not-misleading {
+            background: linear-gradient(45deg, #11998e, #38ef7d);
+            color: white;
+        }
+        .confidence-meter {
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        .history-item {
+            border-left: 4px solid #007bff;
+            background: #f8f9fa;
+            transition: all 0.2s ease;
+        }
+        .history-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        .model-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .model-active { background: #28a745; color: white; }
+        .model-inactive { background: #dc3545; color: white; }
+        .spinner-border-sm { width: 1rem; height: 1rem; }
+        .analytics-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 15px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="main-container p-4">
+                    <!-- Header -->
+                    <div class="text-center mb-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div style="width: 120px;"></div>
+                            <div class="flex-grow-1">
+                                <h1 class="title-section display-4 fw-bold mb-3">
+                                    <i class="fas fa-search"></i> Misinformation Detector
+                                </h1>
+                                <p class="lead text-muted">Advanced AI-powered analysis to detect misleading information</p>
+                            </div>
+                            <div style="width: 120px;">
+                                <a href="/models/manage" class="btn btn-sm btn-outline-primary" title="Manage Models">
+                                    <i class="fas fa-cogs"></i> Models
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Model Status removed per requirement (hide specific models) -->
+                        
+                        {% if not models_available %}
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>No trained models available!</strong> Please train models first or upload pre-trained models.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Input Section -->
+                    <div class="row">
+                        <div class="col-lg-8 mx-auto">
+                            <div class="card prediction-card mb-4">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="textInput" class="form-label fw-bold">
+                                            <i class="fas fa-edit"></i> Enter text to analyze:
+                                        </label>
+                                        <textarea 
+                                            class="form-control" 
+                                            id="textInput" 
+                                            rows="4" 
+                                            placeholder="Paste or type the text you want to check for misinformation..."
+                                            style="resize: vertical;"
+                                        ></textarea>
+                                    </div>
+                                    <div class="d-grid">
+                                        <button 
+                                            class="btn btn-primary btn-lg" 
+                                            id="predictBtn"
+                                            onclick="predict()"
+                                            {% if not models_available %}disabled{% endif %}
+                                        >
+                                            <i class="fas fa-magic"></i> Analyze Text
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="resultsSection" style="display: none;">
+                        <div class="row">
+                            <div class="col-lg-8 mx-auto">
+                                <div class="card prediction-card mb-4" id="resultCard">
+                                    <div class="card-body text-center">
+                                        <h3 id="predictionResult" class="mb-3"></h3>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Confidence Level:</label>
+                                            <div class="confidence-meter mx-auto" style="max-width: 300px;">
+                                                <div class="confidence-fill" id="confidenceFill"></div>
+                                            </div>
+                                            <small id="confidenceText" class="text-muted"></small>
+                                        </div>
+                                        
+                                        <!-- Model Details -->
+                                        <div id="modelDetails" class="mb-3"></div>
+                                        
+                                        <!-- Feedback Buttons -->
+                                        <div class="mt-3">
+                                            <p class="mb-2 fw-bold">Was this prediction helpful?</p>
+                                            <button class="btn btn-success me-2" onclick="sendFeedback('helpful')">
+                                                <i class="fas fa-thumbs-up"></i> Yes
+                                            </button>
+                                            <button class="btn btn-danger me-2" onclick="openCorrectionModal()">
+                                                <i class="fas fa-thumbs-down"></i> No
+                                            </button>
+                                            <button class="btn btn-warning" onclick="sendFeedback('unsure')">
+                                                <i class="fas fa-question"></i> Unsure
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Tabs (Evaluation integrated) -->
+                    <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
+                                <i class="fas fa-history"></i> Prediction History
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+                                <i class="fas fa-chart-bar"></i> Analytics
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="evaluation-tab" data-bs-toggle="tab" data-bs-target="#evaluation" type="button" role="tab">
+                                <i class="fas fa-clipboard-check"></i> Evaluation
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="mainTabContent">
+                        <!-- History Tab -->
+                        <div class="tab-pane fade show active" id="history" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4><i class="fas fa-history"></i> Prediction History</h4>
+                                <div>
+                                    <button class="btn btn-outline-primary btn-sm me-2" onclick="refreshHistory()">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="exportHistory()">
+                                        <i class="fas fa-download"></i> Export CSV
+                                    </button>
+                                    <button class="btn btn-warning btn-sm ms-2" onclick="generateReport()">
+                                        <i class="fas fa-file-alt"></i> Report
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="historyContainer">
+                                <div class="text-center text-muted py-5">
+                                    <i class="fas fa-history fa-3x mb-3"></i>
+                                    <p>No predictions yet. Start by analyzing some text!</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analytics Tab -->
+                        <div class="tab-pane fade" id="analytics" role="tabpanel">
+                            <div class="analytics-section p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h4><i class="fas fa-chart-bar"></i> Analytics Dashboard</h4>
+                                    <button class="btn btn-light btn-sm" onclick="generateAnalytics()">
+                                        <i class="fas fa-chart-line"></i> Generate Report
+                                    </button>
+                                </div>
+                                <div id="analyticsContainer">
+                                    <div class="text-center py-5">
+                                        <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                                        <p>Click "Generate Report" to view analytics</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Evaluation Tab -->
+                        <div class="tab-pane fade" id="evaluation" role="tabpanel">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> Model Evaluation (Corrected Samples)</h5>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="loadEvaluation()"><i class="fas fa-sync"></i> Refresh</button>
+                                    </div>
+                                    <div id="evaluationContainer" class="text-muted small">No evaluation run yet. Provide corrections to enable metrics.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 id="loadingText">Analyzing text...</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPredictionTimestamp = null;
+        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        function forceHideLoading() {
+            try { loadingModal.hide(); } catch(e) {}
+            // Remove stray backdrop if any
+            document.querySelectorAll('.modal-backdrop').forEach(b=>b.remove());
+            document.body.classList.remove('modal-open');
+        }
+
+        async function predict() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                alert('Please enter some text to analyze.');
+                return;
+            }
+
+            // Show loading modal
+            document.getElementById('loadingText').textContent = 'Analyzing text...';
+            loadingModal.show();
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResult(data);
+                    currentPredictionTimestamp = data.timestamp;
+                    refreshHistory();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to analyze text: ' + error.message);
+            } finally {
+                // Primary hide
+                loadingModal.hide();
+                // Safety fallback (in case Bootstrap instance glitch)
+                setTimeout(forceHideLoading, 500);
+            }
+        }
+
+        function displayResult(data) {
+            const resultCard = document.getElementById('resultCard');
+            const predictionResult = document.getElementById('predictionResult');
+            const confidenceFill = document.getElementById('confidenceFill');
+            const confidenceText = document.getElementById('confidenceText');
+            const modelDetails = document.getElementById('modelDetails');
+
+            // Update prediction result
+            const legacyMap = { 'Misleading':'misinformation', 'Not Misleading':'nonmisinformation' };
+            const normPred = legacyMap[data.prediction] || data.prediction;
+            predictionResult.innerHTML = `<i class="fas fa-${normPred === 'misinformation' ? 'exclamation-triangle' : 'check-circle'}"></i> ${normPred}`;
+            
+            // Update card styling
+            resultCard.className = `card prediction-card mb-4 ${normPred === 'misinformation' ? 'misleading' : 'not-misleading'}`;
+
+            // Update confidence meter
+            const confidenceValue = (typeof data.confidence === 'number' && !isNaN(data.confidence)) ? data.confidence : 0;
+            const confidencePercent = (confidenceValue * 100).toFixed(1);
+            confidenceFill.style.width = confidencePercent + '%';
+            confidenceFill.style.background = normPred === 'misinformation' ? 
+                'linear-gradient(45deg, #ff416c, #ff4b2b)' : 
+                'linear-gradient(45deg, #11998e, #38ef7d)';
+            confidenceText.textContent = `${confidencePercent}% confidence`;
+
+            // Sanitized model details (hide internal model identities)
+            let detailsHtml = '';
+            const thresholdUsed = (data.threshold_used || 0.5);
+            if (typeof data.misinfo_probability === 'number') {
+                detailsHtml += `
+                    <div class="card" style="background: rgba(255,255,255,0.25);">
+                        <div class="card-body p-2">
+                            <small class="fw-bold">Aggregated internal misinfo probability:</small>
+                            <small>${(data.misinfo_probability * 100).toFixed(2)}% (threshold ${(thresholdUsed*100).toFixed(0)}%)</small>
+                        </div>
+                    </div>`;
+            } else if (data.details && data.details.misinfo_probabilities) {
+                // If backend still provides structured probs, collapse them to an average without exposing names
+                const probs = Object.values(data.details.misinfo_probabilities).filter(p => typeof p === 'number');
+                if (probs.length) {
+                    const avg = probs.reduce((a,b)=>a+b,0)/probs.length;
+                    detailsHtml += `
+                        <div class="card" style="background: rgba(255,255,255,0.25);">
+                            <div class="card-body p-2">
+                                <small class="fw-bold">Ensemble misinfo probability (avg):</small>
+                                <small>${(avg * 100).toFixed(2)}%</small>
+                            </div>
+                        </div>`;
+                }
+            }
+            if (!detailsHtml) {
+                detailsHtml = '<small class="text-muted">Internal ensemble evaluated the text.</small>';
+            }
+            modelDetails.innerHTML = detailsHtml;
+
+            // Show results section
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+            // Ensure modal hidden if still visible
+            forceHideLoading();
+        }
+
+    async function sendFeedback(feedback, correctLabel=null) {
+            if (!currentPredictionTimestamp) {
+                alert('No recent prediction to provide feedback for.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        feedback: feedback,
+                        timestamp: currentPredictionTimestamp,
+                        correct_label: correctLabel
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    // Provide inline acknowledgement instead of alert
+                    const predictionResult = document.getElementById('predictionResult');
+                    const badge = document.createElement('div');
+                    const correctionNote = data.correct_label ? ` | corrected -> ${data.correct_label}` : '';
+                    badge.innerHTML = `<span class="badge bg-info mt-2">Feedback recorded: ${feedback}${correctionNote}</span>`;
+                    predictionResult.appendChild(badge);
+                    // Refresh history to reflect feedback icon
+                    refreshHistory();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to submit feedback: ' + error.message);
+            }
+        }
+
+        async function generateReport(ev) {
+            document.getElementById('loadingText').textContent = 'Generating report...';
+            loadingModal.show();
+            try {
+                const mode = (ev && ev.shiftKey) ? 'full' : 'quick';
+                const response = await fetch('/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type':'application/json' }
+                    ,body: JSON.stringify({ mode })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    const blob = new Blob([data.content], {type: 'text/markdown'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = data.output; a.click();
+                    URL.revokeObjectURL(url);
+                    if(mode==='quick'){
+                        console.log('Quick report generated. Hold Shift and click Report for full metrics (slower).');
+                    }
+                } else {
+                    alert('Report error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Report failed: ' + e.message);
+            } finally {
+                loadingModal.hide(); setTimeout(forceHideLoading, 400);
+            }
+        }
+
+        async function refreshHistory() {
+            try {
+                const response = await fetch('/history');
+                const history = await response.json();
+                displayHistory(history);
+            } catch (error) {
+                console.error('Failed to fetch history:', error);
+            }
+        }
+
+        function displayHistory(history) {
+            const container = document.getElementById('historyContainer');
+            
+            if (!history || history.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-history fa-3x mb-3"></i>
+                        <p>No predictions yet. Start by analyzing some text!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let historyHtml = '';
+            history.reverse().forEach((item, index) => {
+                const date = new Date(item.timestamp).toLocaleString();
+                const legacyMap = { 'Misleading':'misinformation', 'Not Misleading':'nonmisinformation' };
+                const prediction = legacyMap[item.prediction] || item.prediction;
+                const confidence = (item.confidence * 100).toFixed(1);
+                // Determine feedback icon from feedback_list (array of feedback records)
+                let feedbackIcon = '⏳';
+                if (item.feedback_list && Array.isArray(item.feedback_list) && item.feedback_list.length > 0) {
+                    const latest = item.feedback_list[item.feedback_list.length - 1];
+                    const fType = latest.feedback_type;
+                    feedbackIcon = fType === 'helpful' ? '👍' : (fType === 'not_helpful' ? '👎' : '🤔');
+                }
+
+                historyHtml += `
+                    <div class="history-item p-3 mb-3 rounded">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="mb-1">
+                                    <span class="badge ${prediction === 'misinformation' ? 'bg-danger' : 'bg-success'} me-2">
+                                        ${prediction}
+                                    </span>
+                                    <small class="text-muted">${date}</small>
+                                </h6>
+                                <p class="mb-1 text-truncate">${item.original_text}</p>
+                                <small class="text-muted">Confidence: ${confidence}%</small>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="mb-1">
+                                    <span class="badge bg-secondary">Feedback: ${feedbackIcon}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = historyHtml;
+        }
+
+        async function generateAnalytics() {
+            document.getElementById('loadingText').textContent = 'Generating analytics...';
+            loadingModal.show();
+
+            try {
+                const response = await fetch('/analytics');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.image) {
+                        document.getElementById('analyticsContainer').innerHTML = `
+                            <div class="text-center">
+                                <img src="data:image/png;base64,${data.image}" class="img-fluid rounded" alt="Analytics Chart">
+                            </div>
+                        `;
+                    } else if (data.summary) {
+                        const s = data.summary;
+                        document.getElementById('analyticsContainer').innerHTML = `
+                            <div class="card bg-light text-dark p-3">
+                                <h5 class="mb-3">Analytics Summary (Fallback)</h5>
+                                <ul class="mb-2">
+                                    <li>Total Predictions: ${s.total}</li>
+                                    <li>Misleading Count: ${s.misleading}</li>
+                                    <li>Not Misleading Count: ${s.not_misleading}</li>
+                                    <li>Avg Confidence: ${(s.avg_confidence*100).toFixed(2)}%</li>
+                                </ul>
+                                <small class="text-muted">Chart rendering disabled (matplotlib not available).</small>
+                            </div>`;
+                    }
+                } else {
+                    document.getElementById('analyticsContainer').innerHTML = `
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('analyticsContainer').innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-times-circle"></i> Failed to generate analytics: ${error.message}
+                    </div>
+                `;
+            } finally {
+                loadingModal.hide();
+                setTimeout(forceHideLoading, 500);
+            }
+        }
+
+        async function exportHistory() {
+            try {
+                const response = await fetch('/export_history');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `misinformation_history_${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const data = await response.json();
+                    alert('Export failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('Export failed: ' + error.message);
+            }
+        }
+
+        function openCorrectionModal(){
+            const modalEl = document.getElementById('correctionModal');
+            const m = new bootstrap.Modal(modalEl);
+            m.show();
+        }
+        function submitCorrection(){
+            const selected = document.querySelector('input[name="correctLabelRadio"]:checked');
+            if(!selected){ alert('Select a correct label first.'); return; }
+            sendFeedback('not_helpful', selected.value);
+            const modalEl = document.getElementById('correctionModal');
+            const m = bootstrap.Modal.getInstance(modalEl);
+            m.hide();
+        }
+        // Load history on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshHistory();
+            // Auto-load evaluation metrics when its tab becomes active
+            const evalTab = document.getElementById('evaluation-tab');
+            if (evalTab) {
+                evalTab.addEventListener('shown.bs.tab', () => loadEvaluation());
+            }
+        });
+
+                async function loadEvaluation(){
+                        const c = document.getElementById('evaluationContainer');
+                        c.innerHTML = '<span class="text-info">Loading metrics...</span>';
+                        try{
+                                const resp = await fetch('/evaluation');
+                                const data = await resp.json();
+                                if(!resp.ok){
+                                        c.innerHTML = `<div class="alert alert-warning p-2 mb-0"><i class="fas fa-exclamation-triangle"></i> ${data.error}</div>`;
+                                        return;
+                                }
+                                const cm = data.confusion_matrix;
+                                const matrix = cm.matrix;
+                                // matrix ordering [[TP FN],[FP TN]] for labels [misinformation, nonmisinformation]
+                                const tp = matrix[0][0];
+                                const fn = matrix[0][1];
+                                const fp = matrix[1][0];
+                                const tn = matrix[1][1];
+                                c.innerHTML = `
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <div class="card h-100"><div class="card-body p-2 text-center">
+                                                    <div class="fw-bold">Accuracy</div><div>${(data.accuracy*100).toFixed(2)}%</div>
+                                                </div></div>
+                                            </div>
+                                            <div class="col-md-3"><div class="card h-100"><div class="card-body p-2 text-center"><div class="fw-bold">Precision</div><div>${(data.precision*100).toFixed(2)}%</div></div></div></div>
+                                            <div class="col-md-3"><div class="card h-100"><div class="card-body p-2 text-center"><div class="fw-bold">Recall</div><div>${(data.recall*100).toFixed(2)}%</div></div></div></div>
+                                            <div class="col-md-3"><div class="card h-100"><div class="card-body p-2 text-center"><div class="fw-bold">F1 Score</div><div>${(data.f1*100).toFixed(2)}%</div></div></div></div>
+                                        </div>
+                                        <hr class="my-3"/>
+                                        <h6>Confusion Matrix</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered text-center mb-2">
+                                                <thead class="table-light"><tr><th></th><th colspan="2">Predicted</th></tr><tr><th>Actual</th><th>misinfo</th><th>non-misinfo</th></tr></thead>
+                                                <tbody>
+                                                    <tr><th>misinfo</th><td class="table-success">${tp}</td><td class="table-danger">${fn}</td></tr>
+                                                    <tr><th>non-misinfo</th><td class="table-warning">${fp}</td><td class="table-success">${tn}</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <small class="text-muted">Samples used: ${data.samples_used}. Only predictions with user-provided correct labels are included.</small>
+                                `;
+                        }catch(e){
+                                c.innerHTML = `<div class="alert alert-danger p-2 mb-0">Failed: ${e.message}</div>`;
+                        }
+                }
+
+        // Enter key to predict
+        document.getElementById('textInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                predict();
+            }
+        });
+        </script>
+
+        <!-- Correction Modal -->
+        <div class="modal fade" id="correctionModal" tabindex="-1" aria-labelledby="correctionModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="correctionModalLabel">Provide Correct Label</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Please select the correct classification so we can improve future models.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="correctLabelRadio" id="corrMisinfo" value="misinformation">
+                            <label class="form-check-label" for="corrMisinfo">misinformation</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="correctLabelRadio" id="corrNonMisinfo" value="nonmisinformation">
+                            <label class="form-check-label" for="corrNonMisinfo">nonmisinformation</label>
+                        </div>
+                        <small class="text-muted">Your correction will be stored (anonymized) for model retraining.</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="submitCorrection()">Submit Correction</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+</body>
+</html>

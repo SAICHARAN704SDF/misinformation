@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: misinformation-detector
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements_rf_only.txt && python train_models.py --data-path data --model rf || echo 'Skipping training if no data'"
+    startCommand: "gunicorn app:create_app --bind 0.0.0.0:$PORT --workers=2 --threads=4"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: USE_ONLY_RF
+        value: 'true'
+      - key: FLASK_DEBUG
+        value: 'false'
+      - key: SECRET_KEY
+        sync: false
+    autoDeploy: true
+    healthCheckPath: /health

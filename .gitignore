@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Models (too large for git)
+models/*.pkl
+models/*.h5
+models/*.pth
+models/*.pt
+!models/.gitkeep
+
+# Data files (optional - include sample data but not full datasets)
+*.csv
+!data/sample_*.csv
+*.xlsx
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+feedback_log.csv
+corrections.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Reports
+report.md
+
+# Temporary files
+*.tmp
+*.bak
