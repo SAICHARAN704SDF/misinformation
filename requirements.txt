@@ -20,10 +20,10 @@ shap==0.42.1
 lime==0.2.0.1
 
 # Deep Learning - CPU Only (PyTorch)
---find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.0.1+cpu
-torchaudio==2.0.2+cpu
-torchvision==0.15.2+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.0.1
+torchaudio==2.0.2
+torchvision==0.15.2
 
 # Transformers (CPU optimized)
 transformers==4.30.2

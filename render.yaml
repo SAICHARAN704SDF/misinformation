@@ -7,7 +7,7 @@ services:
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers=2 --threads=4 --timeout 120"
     envVars:
       - key: PYTHON_VERSION
-        value: 3.10.13
+        value: 3.11.6
       - key: USE_ONLY_RF
         value: 'true'
       - key: FLASK_DEBUG
