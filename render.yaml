@@ -3,7 +3,7 @@ services:
     name: misinformation-detector
     env: python
     plan: free
-    buildCommand: "pip install --upgrade pip && pip install -r requirements_rf_only.txt && python train_models.py --data-path data --model rf || echo 'Skipping training if no data'"
+    buildCommand: "python3.11 -m pip install --upgrade pip && python3.11 -m pip install -r requirements_rf_only.txt || echo 'Training skipped'"
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers=2 --threads=4 --timeout 120"
     envVars:
       - key: PYTHON_VERSION
